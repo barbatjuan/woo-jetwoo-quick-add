@@ -3,7 +3,7 @@
  * Plugin Name:       Woo JetWooBuilder Quick Add
  * Plugin URI:        https://github.com/barbatjuan/woo-jetwoo-quick-add
  * Description:       Lets customers add products to the cart straight from a JetWooBuilder product grid — variable products included — instead of being sent to the single product page.
- * Version:           2.2.2
+ * Version:           3.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            barbatjuan
@@ -29,7 +29,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WJQA_VERSION', '2.2.2' );
+define( 'WJQA_VERSION', '3.0.0' );
 define( 'WJQA_FILE', __FILE__ );
 define( 'WJQA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WJQA_URL', plugin_dir_url( __FILE__ ) );
@@ -44,11 +44,14 @@ define( 'WJQA_URL', plugin_dir_url( __FILE__ ) );
  */
 define( 'WJQA_TESTED_JET_WOO_BUILDER', '2.3.4' );
 define( 'WJQA_TESTED_WOOCOMMERCE', '11.0.1' );
+define( 'WJQA_TESTED_VARIATION_SWATCHES_PRO', '2.3.0' );
 
 require_once WJQA_PATH . 'includes/class-wjqa-support.php';
 require_once WJQA_PATH . 'includes/class-wjqa-assets.php';
 require_once WJQA_PATH . 'includes/class-wjqa-card-navigation.php';
 require_once WJQA_PATH . 'includes/class-wjqa-mobile-cart.php';
+require_once WJQA_PATH . 'includes/class-wjqa-variations-swatches.php';
+require_once WJQA_PATH . 'includes/class-wjqa-variations-select.php';
 require_once WJQA_PATH . 'includes/class-wjqa-archive-variations.php';
 
 /**

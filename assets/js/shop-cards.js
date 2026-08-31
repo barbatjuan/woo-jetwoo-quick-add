@@ -6,7 +6,9 @@
  *   1. cardNavigationFix — keep a click on the cart controls from triggering
  *      JetWooBuilder's "Clickable item" navigation.
  *   2. archiveVariations — turn the card's "Select options" link into a real AJAX
- *      add-to-cart once the customer picks a variation.
+ *      add-to-cart once the customer picks a variation. Which control does the
+ *      picking is decided server-side and arrives as `variationPicker`: 'swatches'
+ *      where the site has Variation Swatches Pro, 'select' everywhere else.
  *   3. mobileCartPlacement — move the cart controls out of the hover overlay on
  *      small screens, where there is no hover to reveal them with.
  *
@@ -49,25 +51,150 @@
 	}
 
 	/**
-	 * Feature 2 — archive variations.
+	 * Label of a card's cart button, wherever JetWooBuilder put the text.
+	 *
+	 * Shared: both pickers relabel the button once a variation is chosen, because
+	 * until then it reads "Select options" and hides the fact that it now adds
+	 * something to the cart.
 	 */
-	function initArchiveVariations() {
+	function setLabel( $button, text ) {
+		var $label = $button.find( '.jet-woo-product-button__label' );
+
+		if ( $label.length ) {
+			$label.text( text );
+		} else {
+			$button.text( text );
+		}
+	}
+
+	/**
+	 * Feature 2, swatches path — drive Variation Swatches Pro's archive swatches.
+	 *
+	 * The swatches themselves, and the rewiring of the button to the chosen variation,
+	 * are Variation Swatches Pro's and JetWooBuilder's own code. This only starts them
+	 * and tidies up after them.
+	 */
+	function initSwatchesPicker() {
+		/**
+		 * Variation Swatches Pro initialises archive swatches lazily through an
+		 * IntersectionObserver, and that observer never fires for swatches rendered
+		 * inside JetWooBuilder cards. Without initialisation the button is never
+		 * rewired to the chosen variation, so clicking it just follows its href.
+		 *
+		 * Calling the plugin's own public jQuery plugin is the supported way in. The
+		 * `:not(.wvs-pro-loaded)` guard is the same one the plugin uses, so if it ever
+		 * starts initialising these itself nothing is done twice.
+		 */
+		function initSwatches() {
+			if ( ! $.fn.WooVariationSwatchesPro ) {
+				return;
+			}
+
+			$( '.jet-woo-product-button .wvs-archive-variations-wrapper' )
+				.not( '.wvs-pro-loaded' )
+				.each( function () {
+					try {
+						$( this ).WooVariationSwatchesPro();
+					} catch ( error ) {
+						if ( window.console ) {
+							window.console.log( 'Woo JetWooBuilder Quick Add:', error );
+						}
+					}
+				} );
+		}
+
+		function cartButtonFor( element ) {
+			return $( element ).closest( '.jet-woo-product-button' ).find( '.wvs-add-to-cart-button' );
+		}
+
+		/**
+		 * wc-add-to-cart.js reads the button through jQuery's `.data()`, so both the
+		 * attribute and the data cache have to be written or the quantity is ignored.
+		 */
+		function syncQuantity( input ) {
+			var $button = cartButtonFor( input ),
+				value = parseInt( input.value, 10 );
+
+			if ( ! $button.length ) {
+				return;
+			}
+
+			if ( isNaN( value ) || value < 1 ) {
+				value = 1;
+			}
+
+			$button.attr( 'data-quantity', value ).data( 'quantity', value );
+		}
+
+		$( initSwatches );
+		$( window ).on( 'load', initSwatches );
+
+		// JetSmartFilters swaps the whole grid out, so fresh cards need initialising.
+		$( document ).on( 'jet-filter-content-rendered', function () {
+			window.setTimeout( initSwatches, 0 );
+		} );
+
+		$( document.body ).on( 'change input', '.jet-woo-product-button .quantity input.qty', function () {
+			syncQuantity( this );
+		} );
+
+		$( document.body ).on( 'show_variation', '.wvs-archive-variations-wrapper', function ( event, variation ) {
+			var $wrapper = $( this ).closest( '.jet-woo-product-button' ),
+				$button = $wrapper.find( '.wvs-add-to-cart-button' ),
+				$input = $wrapper.find( 'input.qty' );
+
+			if ( ! variation ) {
+				return;
+			}
+
+			if ( $input.length ) {
+				if ( variation.max_qty ) {
+					$input.attr( 'max', variation.max_qty );
+				} else {
+					$input.removeAttr( 'max' );
+				}
+
+				$input.attr( 'min', variation.min_qty || 1 );
+			}
+
+			// JetWooBuilder rewires the button on a zero timeout, so run after it.
+			window.setTimeout( function () {
+				if ( ! $button.length ) {
+					return;
+				}
+
+				if ( ! $button.data( 'wjqaDefaultLabel' ) ) {
+					$button.data( 'wjqaDefaultLabel', $button.text().trim() );
+				}
+
+				setLabel( $button, settings.addToCartText );
+
+				if ( $input.length ) {
+					syncQuantity( $input.get( 0 ) );
+				}
+			}, 10 );
+		} );
+
+		$( document.body ).on( 'reset_data', '.wvs-archive-variations-wrapper', function () {
+			var $button = $( this ).closest( '.jet-woo-product-button' ).find( '.wvs-add-to-cart-button' ),
+				defaultLabel = $button.data( 'wjqaDefaultLabel' );
+
+			if ( $button.length && defaultLabel ) {
+				setLabel( $button, defaultLabel );
+			}
+		} );
+	}
+
+	/**
+	 * Feature 2, dropdown path — drive the native picker this plugin renders.
+	 */
+	function initSelectPicker() {
 		function buttonFor( $select ) {
 			return $select.closest( '.jet-woo-product-button' ).find( '.wjqa-add-to-cart' );
 		}
 
 		function priceFor( $select ) {
 			return $select.closest( '.jet-woo-products__item' ).find( '.jet-woo-product-price' ).first();
-		}
-
-		function setLabel( $button, text ) {
-			var $label = $button.find( '.jet-woo-product-button__label' );
-
-			if ( $label.length ) {
-				$label.text( text );
-			} else {
-				$button.text( text );
-			}
 		}
 
 		/**
@@ -259,7 +386,14 @@
 	}
 
 	if ( settings.archiveVariations ) {
-		initArchiveVariations();
+		// Which picker exists on the page was decided server-side, from what the site
+		// has installed. Running the wrong one would bind handlers for controls that
+		// were never rendered.
+		if ( 'swatches' === settings.variationPicker ) {
+			initSwatchesPicker();
+		} else {
+			initSelectPicker();
+		}
 	}
 
 	if ( settings.mobileCartPlacement ) {

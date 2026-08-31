@@ -63,12 +63,21 @@ class WJQA_Assets {
 			self::HANDLE,
 			'wjqaSettings',
 			[
-				'cardNavigationFix' => $navigation_fix,
-				'archiveVariations' => $variations,
+				'cardNavigationFix'   => $navigation_fix,
+				'archiveVariations'   => $variations,
+				'variationPicker'     => $variations ? WJQA_Archive_Variations::picker() : '',
 				'mobileCartPlacement' => $mobile_cart,
-				'mobileBreakpoint'  => WJQA_Mobile_Cart::breakpoint(),
-				'addToCartText'     => __( 'Add to cart', 'woocommerce' ),
+				'mobileBreakpoint'    => WJQA_Mobile_Cart::breakpoint(),
+				'addToCartText'       => __( 'Add to cart', 'woocommerce' ),
 			]
 		);
+
+		if ( $variations && WJQA_Archive_Variations::PICKER_SWATCHES === WJQA_Archive_Variations::picker() ) {
+			// Variation Swatches Pro only enqueues its script when it actually renders
+			// a variable product. Load it on every listing so that a JetSmartFilters
+			// AJAX render which pulls variable products into a grid that had none
+			// still has the JS it needs.
+			wp_enqueue_script( 'woo-variation-swatches-pro' );
+		}
 	}
 }

@@ -3,8 +3,9 @@
 Lets customers add products to the cart straight from a JetWooBuilder product grid —
 variable products included — instead of being sent to the single product page.
 
-No paid dependency. Version 1.x needed Variation Swatches Pro for variable products;
-2.0 replaced that with a native picker and dropped the requirement entirely.
+No paid dependency, but it uses one if the site has it. Version 1.x required Variation
+Swatches Pro; 2.x replaced it with a native dropdown; 3.0 detects which of the two the
+site can do and runs that.
 
 ## Why this exists
 
@@ -47,16 +48,53 @@ handlers bound to the same element.
 
 ### B. Variable products can be chosen from the card
 
-**Needs:** JetWooBuilder. Nothing else.
+**Needs:** JetWooBuilder. Variation Swatches **Pro** is optional and changes which
+control you get.
 
 WooCommerce cannot add a variable product to the cart without knowing which variation
 is wanted, so JetWooBuilder renders a plain link to the product page.
 
-**What makes the fix small.** `WC_AJAX::add_to_cart()` accepts a variation ID directly:
-it resolves the parent product and the variation attributes on its own. The browser
-never has to send attribute pairs — it only has to put the right ID on the button. So
-the whole feature is "render a list of variation IDs, let the customer pick one, and
-rewrite the button".
+**What makes either fix small.** `WC_AJAX::add_to_cart()` accepts a variation ID
+directly: it resolves the parent product and the variation attributes on its own. The
+browser never has to send attribute pairs — it only has to put the right ID on the
+button. Both pickers below are just different ways of letting a customer choose it.
+
+#### Two pickers, chosen from what the site has
+
+| Site has | Picker | Class |
+|---|---|---|
+| Variation Swatches **Pro** | its archive swatches, reconnected | `WJQA_Variations_Swatches` |
+| anything else | a native `<select>` of buyable variations | `WJQA_Variations_Select` |
+
+Where a site owns the Pro licence the swatches are the better control: bigger targets,
+colour and image swatches, and the same widget the customer already meets on the
+product page. But that licence is per-site and paid, the free edition has no archive
+swatches at all, and most sites do not have it — so making the whole feature
+conditional on it means most sites get nothing.
+
+Detection is a default, not a verdict: `wjqa_variation_picker` forces either one.
+Forcing `swatches` without the Pro archive component is refused, because there would
+be nothing to draw and the card would end up with no way to buy at all.
+
+The running picker is announced as `wjqa-picker-swatches` or `wjqa-picker-select` on
+the `<body>`, which is both how the stylesheet keeps each picker's rules off the
+other's cards and how you tell which path a card is on without reading any PHP.
+
+#### The swatches picker
+
+JetWooBuilder and Variation Swatches Pro already ship an integration with each other.
+Variation Swatches Pro fires `show_variation`; JetWooBuilder's
+`handleVariationSwatchesAddToCart` rewrites the card button into a native WooCommerce
+AJAX add-to-cart pointing at the chosen variation. Four links are missing:
+
+| # | Missing | Why | Fixed by |
+|---|---------|-----|----------|
+| 1 | Swatches are never printed | JetWooBuilder never fires `woocommerce_after_shop_loop_item` | `woocommerce_loop_add_to_cart_link` at priority 20 |
+| 2 | Button lacks `wvs-add-to-cart-button` | JetWooBuilder calls `wc_get_template( 'loop/add-to-cart.php' )` directly, skipping `woocommerce_loop_add_to_cart_args` | `jet-woo-builder/template-functions/product-add-to-cart-settings` |
+| 3 | No quantity field on variable products | `qty_for_woocommerce_loop_add_to_cart_link()` only handles `simple` and `variation` | Same filter as #1 |
+| 4 | Swatches never initialise | Variation Swatches Pro's IntersectionObserver does not fire inside JetWooBuilder cards | `$( el ).WooVariationSwatchesPro()`, the plugin's own public API |
+
+#### The dropdown picker
 
 | Step | Where |
 |---|---|
@@ -65,17 +103,18 @@ rewrite the button".
 | Point the button at the chosen variation and relabel it | `assets/js/shop-cards.js` |
 | Swap the card's price range for the chosen variation's price | same |
 
-Priority 20 matters: JetWooBuilder's own quantity filter runs at 10 and replaces the
-markup wholesale.
+Priority 20 matters for both: JetWooBuilder's own quantity filter runs at 10 and
+replaces the markup wholesale.
 
 No template overrides are used — every hook above is a documented extension point.
 
-#### Scope, deliberately
+##### Scope, deliberately
 
-Only variable products with a **single variation attribute** are handled. Matching a
-combination of attributes to a variation needs a resolution matrix plus handling for
+The dropdown handles variable products with a **single variation attribute**. Matching
+a combination of attributes to a variation needs a resolution matrix plus handling for
 partially-chosen and "any" combinations, and getting that subtly wrong on a live shop
-means selling the wrong thing.
+means selling the wrong thing. The swatches picker has no such limit, because the Pro
+archive component resolves combinations itself.
 
 A multi-attribute product keeps the stock behaviour: the card links to the product
 page, where WooCommerce does it properly. The same fallback applies when a product has
@@ -118,6 +157,8 @@ it from the card navigation in its new home.
 - WordPress 6.0+, PHP 7.4+
 - WooCommerce 8.0+ with **Enable AJAX add to cart buttons on archives** turned on
 - JetWooBuilder
+- Optionally **Variation Swatches for WooCommerce — Pro**, which upgrades feature B's
+  dropdown to real archive swatches. Nothing breaks without it.
 
 ## Install
 
@@ -176,8 +217,12 @@ Layout properties, same place:
 
 ```css
 :root {
+	--wjqa-control-gap: 6px;       /* gap between two controls sharing a row */
 	--wjqa-select-gap: 6px;        /* gap under the dropdown */
 	--wjqa-select-height: auto;    /* dropdown height; 40px on touch pointers */
+	--wjqa-swatch-gap: 8px;        /* gap under the swatches */
+	--wjqa-qty-width: 54px;        /* quantity field width */
+	--wjqa-touch-target: 44px;     /* swatch size on touch pointers */
 	--wjqa-inline-cart-gap: 8px;   /* gap above the controls once moved on mobile */
 	--wjqa-inline-cart-order: 9;   /* flex order of the moved controls in the card */
 }
@@ -189,16 +234,26 @@ Filters:
 |---|---|---|
 | `wjqa_enable_card_navigation_fix` | JetWooBuilder present | Turn feature A off |
 | `wjqa_enable_archive_variations` | JetWooBuilder + AJAX add to cart | Turn feature B off |
+| `wjqa_variation_picker` | `swatches` if Variation Swatches Pro is present, else `select` | Force one picker |
 | `wjqa_enable_mobile_cart_placement` | JetWooBuilder present | Turn feature C off |
 | `wjqa_mobile_breakpoint` | `767` | Width at or below which feature C moves the controls |
-| `wjqa_show_variable_quantity` | `false` | Add a quantity field beside the button |
+| `wjqa_show_variable_quantity` | `true` on swatches, `false` on the dropdown | Quantity field beside the button |
 | `wjqa_is_product_listing` | shop, product taxonomies, search, front page, single product | Where assets load |
 
 Align `wjqa_mobile_breakpoint` with whatever breakpoint the theme's own mobile rules
 use, so the two never disagree about what "mobile" means.
 
-`wjqa_show_variable_quantity` is off because JetWooBuilder is usually not showing a
-quantity on simple products either, and switching it on for only half the grid looks
+A site that owns Variation Swatches Pro but whose attributes are long phrases rather
+than colours may well prefer the plainer control:
+
+```php
+add_filter( 'wjqa_variation_picker', fn() => 'select' );
+```
+
+`wjqa_show_variable_quantity` differs by picker on purpose. Swatches occupy their own
+row and leave the button room beside a quantity field; a dropdown and a button already
+stack into two rows in a narrow card, and JetWooBuilder is usually not showing a
+quantity on simple products either, so switching it on for only half the grid looks
 like a bug.
 
 ## Verifying an install

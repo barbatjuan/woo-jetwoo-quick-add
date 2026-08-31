@@ -40,6 +40,20 @@ class WJQA_Support {
 	}
 
 	/**
+	 * Whether the archive component of Variation Swatches Pro is available.
+	 *
+	 * This decides which variation picker feature B renders. The free edition of
+	 * Variation Swatches has no archive swatches at all, so it does not count: only
+	 * the Pro archive component can do the job, and its licence is per-site.
+	 *
+	 * @return bool
+	 */
+	public static function has_variation_swatches_pro() {
+		return class_exists( 'Woo_Variation_Swatches_Pro_Archive_Page' )
+			&& function_exists( 'woo_variation_swatches' );
+	}
+
+	/**
 	 * Whether WooCommerce is set to add products to the cart over AJAX.
 	 *
 	 * With this off, WooCommerce renders plain links that reload the page and the

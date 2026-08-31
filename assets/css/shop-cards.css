@@ -5,24 +5,43 @@
  *
  * This file sets layout and nothing else, with one unavoidable exception: the button
  * once feature C has moved it out of the hover overlay, which is explained where that
- * rule lives. Everywhere else there are no colours, no borders, no typography and no
- * `!important`. The dropdown keeps the browser's native appearance, which means it
- * inherits whatever the site already looks like and cannot drift from it when the
- * theme changes.
+ * rule lives. Everywhere else there are no colours and no typography. The dropdown
+ * keeps the browser's native appearance, which means it inherits whatever the site
+ * already looks like and cannot drift from it when the theme changes.
  *
- * The reason is that the picker is injected into a live storefront whose card design
- * belongs to Elementor and JetWooBuilder. Anything this file styles is a decision
- * taken away from them.
+ * TWO PICKERS, ONE FILE.
  *
- * The tunable numbers are custom properties, so a site can override them without
- * touching this file:
+ * Feature B renders either archive swatches or a native dropdown, decided from what
+ * the site has installed. Each picker's rules are scoped to `body.wjqa-picker-*` so
+ * they cannot reach the other's cards — a site only ever runs one of them, and rules
+ * for a control that was never rendered are how a stylesheet starts fighting itself.
  *
- *   :root {
- *     --wjqa-select-gap: 6px;
- *   }
+ * Every `!important` here is deliberate and annotated with the rule it has to beat.
+ * They are all fights against CSS baked into WooCommerce, JetWooBuilder or Elementor's
+ * generated per-widget stylesheet, where no reasonable selector wins on specificity.
  */
 
 :root {
+	/* Space between two controls sharing a row, such as a quantity and a button. */
+	--wjqa-control-gap: 6px;
+
+	/* Space under the dropdown, above the button. */
+	--wjqa-select-gap: 6px;
+
+	/* Dropdown height. `auto` keeps the browser default, which is what a mouse
+	   wants; touch pointers get a real tap target instead, further down. */
+	--wjqa-select-height: auto;
+
+	/* Space under the swatches, above the row below them. */
+	--wjqa-swatch-gap: 8px;
+
+	/* Width of the quantity field. The default suits a card of roughly 200px with
+	   an "Add to cart" label beside it. Widen it on roomier cards. */
+	--wjqa-qty-width: 54px;
+
+	/* Minimum comfortable tap target, applied on touch pointers only. */
+	--wjqa-touch-target: 44px;
+
 	/* Space above the cart controls once they move below the price on mobile. */
 	--wjqa-inline-cart-gap: 8px;
 
@@ -35,33 +54,20 @@
 	   which is why the default is comfortably high rather than just one more. */
 	--wjqa-inline-cart-order: 9;
 
-	/* Appearance of the moved button. See the "Moved button" section below for why
-	   these exist and why a site will usually want to change them. */
+	/* Appearance of the moved button. See "The moved button" below for why these
+	   exist and why a site will usually want to change them. */
 	--wjqa-button-bg: #4b151d;
 	--wjqa-button-color: #e7b9c3;
 	--wjqa-button-border: 1px solid #4b151d;
 	--wjqa-button-radius: 0;
 	--wjqa-button-padding: 13px 20px;
-
-	/* Full card width. In the overlay the button was sized to its label, because it
-	   floated over the photo and a full-width bar would have covered it. Below the
-	   price there is nothing to cover, the card is narrow, and the dropdown above it
-	   is already full width — so matching that is what makes the two read as one
-	   control instead of two loose pieces. */
 	--wjqa-button-width: 100%;
 	--wjqa-button-font: 400 14px/1 Inter, sans-serif;
 	--wjqa-button-letter-spacing: 0.01em;
-
-	/* Space between the dropdown and the button below it. */
-	--wjqa-select-gap: 6px;
-
-	/* Dropdown height. `auto` keeps the browser default, which is what a mouse
-	   wants; touch pointers get a real tap target instead, further down. */
-	--wjqa-select-height: auto;
 }
 
 /* ---------------------------------------------------------------------------
-   The variation picker
+   Picker: the native dropdown
    --------------------------------------------------------------------------- */
 
 .jet-woo-product-button .wjqa-variations {
@@ -81,14 +87,9 @@
 	height: var(--wjqa-select-height);
 }
 
-/* ---------------------------------------------------------------------------
-   Touch targets
-
-   A native dropdown is around 20px tall, well under a comfortable tap target, and on
+/* A native dropdown is around 20px tall, well under a comfortable tap target, and on
    a variation picker the cost of a mis-tap is an order for the wrong thing. Raised
-   only where the pointer is a finger, so mouse users keep the compact card.
-   --------------------------------------------------------------------------- */
-
+   only where the pointer is a finger, so mouse users keep the compact card. */
 @media (pointer: coarse) {
 	:root {
 		--wjqa-select-height: 40px;
@@ -96,15 +97,110 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Picker: Variation Swatches Pro archive swatches
+
+   Scoped to the swatches path. A site running the dropdown has no swatch markup for
+   these to match, and the overrides below would reach its cards for no reason.
+   --------------------------------------------------------------------------- */
+
+body.wjqa-picker-swatches .jet-woo-product-button .wvs-archive-variations-wrapper {
+	margin: 0 0 var(--wjqa-swatch-gap);
+}
+
+/* Variation Swatches lays swatches out as a nowrap flex row, which overflows a
+   narrow card and is then clipped by the card's own `overflow: hidden`. */
+body.wjqa-picker-swatches .jet-woo-product-button .variable-items-wrapper {
+	flex-wrap: wrap;
+	justify-content: center;
+	row-gap: var(--wjqa-control-gap);
+}
+
+/* Variation Swatches sizes archive swatches from its own custom properties, with a
+   30px fallback, so redefining them is enough — no specificity fight, and the
+   plugin's own Archive width/height settings still win if they are ever filled in.
+
+   30px is below a comfortable tap target, and on a swatch the cost of a mis-tap is an
+   order for the wrong variant. Raised only where the pointer is a finger. */
+@media (pointer: coarse) {
+	body.wjqa-picker-swatches {
+		--wvs-archive-product-item-height: var(--wjqa-touch-target);
+		--wvs-archive-product-item-width: var(--wjqa-touch-target);
+	}
+}
+
+/* ---------------------------------------------------------------------------
+   The quantity and button row
+
+   `form.cart` is what JetWooBuilder builds for simple products;
+   `.wjqa-variation-cart-row` is the equivalent this plugin adds for variable ones.
+   Only the swatches picker adds one by default — see `wjqa_show_variable_quantity`.
+   --------------------------------------------------------------------------- */
+
+.jet-woo-product-button form.cart,
+.jet-woo-product-button .wjqa-variation-cart-row {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--wjqa-control-gap);
+	width: 100%;
+	margin: 0;
+}
+
+/* The variable row is the one case whose label changes length — "Select options"
+   before a variation is picked, "Add to cart" after — so it needs room to wrap rather
+   than overflow the card while the long label shows. */
+.jet-woo-product-button .wjqa-variation-cart-row {
+	flex-wrap: wrap;
+}
+
+/* Phones usually drop the grid to two columns, leaving cards too narrow for the field
+   and the button to sit together at a readable size. Let them stack. */
+@media (max-width: 767px) {
+	.jet-woo-product-button form.cart {
+		flex-wrap: wrap;
+	}
+}
+
+/* Beats `.woocommerce div.product form.cart div.quantity { float: left }` from
+   woocommerce.css. A floated item is pulled out of the flex centring entirely, and
+   auto margins do nothing to it. */
+.jet-woo-product-button .quantity {
+	float: none !important;
+	width: auto !important;
+	margin: 0 !important;
+	flex: 0 0 auto;
+}
+
+/* Beats `.jet-woo-products .jet-woo-product-button .quantity .qty
+   { width: 100% !important }` from jet-woo-products.css, which needs one extra class
+   to outrank. A full-width field pushes the button onto its own row. */
+.jet-woo-products .jet-woo-product-button .quantity input.qty {
+	width: var(--wjqa-qty-width) !important;
+	min-width: 0 !important;
+	padding-left: 4px !important;
+	padding-right: 4px !important;
+	text-align: center !important;
+}
+
+/* Beats Elementor's generated per-widget rule, which sets `display: block; width:
+   100%` on the card button through a six-class selector. Scoped to buttons that share
+   a row with a quantity field: a button standing on its own has no reason to shrink,
+   and on mobile it is deliberately full width. */
+.jet-woo-product-button form.cart > .button,
+.jet-woo-product-button .wjqa-variation-cart-row > .button {
+	width: auto !important;
+	margin: 0 !important;
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
    Cart controls moved below the price on mobile
 
-   Only spacing. The controls carry every rule they already had — they were moved,
-   not rebuilt — so alignment, colours and the button itself are untouched.
-
-   The selector is this long on purpose: Elementor's generated per-widget rule sets
-   `margin: 0` on the card button through a four-class selector, and a shorter one
-   here would lose to it and leave the controls flush against the price. Winning on
-   specificity keeps this file free of `!important`.
+   Spacing and placement only. The controls carry every rule they already had — they
+   were moved, not rebuilt.
    --------------------------------------------------------------------------- */
 
 .jet-woo-products .jet-woo-products__item .jet-woo-products__inner-box > .jet-woo-product-button.wjqa-inline-cart {
@@ -118,19 +214,18 @@
    THIS IS THE ONE PLACE THIS FILE SETS COLOUR, AND IT IS NOT A FREE CHOICE.
 
    Card buttons in a hover overlay are routinely given a transparent background,
-   because they sit on top of the product photo and the photo is the background.
-   Moved out from under the photo and onto the card's own background, a transparent
-   button stops reading as a button at all — it looks like loose text.
+   because they sit on top of the product photo and the photo is the background. Moved
+   out from under the photo and onto the card's own background, a transparent button
+   stops reading as a button at all — it looks like loose text.
 
    So a site that styles its card button usually scopes that styling to the widths
    where the button was visible, which is exactly the range this feature changes.
    Whatever the button looked like where it used to appear, it now has to look like
    that where it appears instead, and only the site knows what that is.
 
-   Hence the custom properties: THE DEFAULTS BELOW ARE A STARTING POINT, NOT A
-   DESIGN. Override them with the site's own button values, ideally by pointing them
-   at the same variables or hex codes the site's stylesheet already uses, so the two
-   cannot drift apart:
+   Hence the custom properties: THE DEFAULTS ARE A STARTING POINT, NOT A DESIGN.
+   Override them with the site's own button values, ideally pointing at the same
+   variables or hex codes its stylesheet already uses, so the two cannot drift apart:
 
      :root {
        --wjqa-button-bg: #4b151d;
@@ -147,9 +242,6 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--wjqa-button-width);
-	min-width: 0;
-	max-width: 100%;
 	padding: var(--wjqa-button-padding);
 	border: var(--wjqa-button-border);
 	border-radius: var(--wjqa-button-radius);
@@ -160,20 +252,18 @@
 	box-shadow: none;
 }
 
-/* ---------------------------------------------------------------------------
-   Quantity row
+/* Full card width, but only for a button standing on its own.
 
-   Only ever rendered when a site switches the quantity field on through the
-   `wjqa_show_variable_quantity` filter, which is off by default. Mirrors the
-   `form.cart` JetWooBuilder builds for simple products.
-   --------------------------------------------------------------------------- */
+   In the overlay the button was sized to its label, because it floated over the photo
+   and a full-width bar would have covered it. Below the price there is nothing to
+   cover, the card is narrow, and the dropdown above it is already full width — so
+   matching that is what makes the two read as one control rather than two loose
+   pieces.
 
-.jet-woo-product-button .wjqa-variation-cart-row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
-	gap: var(--wjqa-select-gap);
-	width: 100%;
-	margin: 0;
+   The direct-child combinator is what keeps this off the swatches path, where the
+   button shares its row with a quantity field and must stay label-width. */
+.jet-woo-products .jet-woo-products__item .jet-woo-products__inner-box > .jet-woo-product-button.wjqa-inline-cart > .button {
+	width: var(--wjqa-button-width);
+	min-width: 0;
+	max-width: 100%;
 }
