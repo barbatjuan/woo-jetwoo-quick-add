@@ -1,0 +1,136 @@
+/**
+ * Woo JetWooBuilder Quick Add — product card layout.
+ *
+ * Every `!important` here is deliberate and annotated with the rule it has to
+ * beat. They are all fights against CSS baked into WooCommerce, JetWooBuilder or
+ * Elementor's generated per-widget stylesheet, where no reasonable selector wins
+ * on specificity alone.
+ *
+ * The tunable numbers are custom properties so a site can override them without
+ * touching this file:
+ *
+ *   :root {
+ *     --wjqa-qty-width: 64px;
+ *   }
+ */
+
+:root {
+	/* Width of the quantity field. The default suits a card of roughly 200px with
+	   an "Add to cart" label beside it. Widen it on roomier cards. */
+	--wjqa-qty-width: 54px;
+
+	/* Space between the quantity field and the button. */
+	--wjqa-control-gap: 6px;
+
+	/* Space between the swatches and the row below them. */
+	--wjqa-swatch-gap: 8px;
+
+	/* Minimum comfortable tap target. Applied to swatches on touch pointers only. */
+	--wjqa-touch-target: 44px;
+}
+
+/* ---------------------------------------------------------------------------
+   Quantity and button, side by side and centred as a pair.
+
+   `form.cart` is what JetWooBuilder builds for simple products;
+   `.wjqa-variation-cart-row` is the equivalent this plugin adds for variable ones.
+   --------------------------------------------------------------------------- */
+
+.jet-woo-product-button form.cart,
+.jet-woo-product-button .wjqa-variation-cart-row {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--wjqa-control-gap);
+	width: 100%;
+	margin: 0;
+}
+
+/* The variable row is the one case whose label changes length — "Select options"
+   before a variant is picked, "Add to cart" after — so it needs room to wrap
+   rather than overflow the card while the long label shows. Once the label
+   shortens there is enough slack that it will not wrap spuriously. */
+.jet-woo-product-button .wjqa-variation-cart-row {
+	flex-wrap: wrap;
+}
+
+/* Phones usually drop the grid to two columns, leaving cards too narrow for the
+   field and the button to sit together at a readable size. Let them stack. */
+@media (max-width: 767px) {
+	.jet-woo-product-button form.cart {
+		flex-wrap: wrap;
+	}
+}
+
+/* ---------------------------------------------------------------------------
+   Swatches
+   --------------------------------------------------------------------------- */
+
+.jet-woo-product-button .wvs-archive-variations-wrapper {
+	margin: 0 0 var(--wjqa-swatch-gap);
+}
+
+/* Variation Swatches lays swatches out as a nowrap flex row, which overflows a
+   narrow card and is then clipped by the card's own `overflow: hidden`. */
+.jet-woo-product-button .variable-items-wrapper {
+	flex-wrap: wrap;
+	justify-content: center;
+	row-gap: var(--wjqa-control-gap);
+}
+
+/* ---------------------------------------------------------------------------
+   Overrides
+   --------------------------------------------------------------------------- */
+
+/* Beats `.woocommerce div.product form.cart div.quantity { float: left }` from
+   woocommerce.css. A floated item is pulled out of the flex centring entirely,
+   and auto margins do nothing to it. */
+.jet-woo-product-button .quantity {
+	float: none !important;
+	width: auto !important;
+	margin: 0 !important;
+	flex: 0 0 auto;
+}
+
+/* Beats `.jet-woo-products .jet-woo-product-button .quantity .qty
+   { width: 100% !important }` from jet-woo-products.css, which needs one extra
+   class to outrank. A full-width field pushes the button onto its own row. */
+.jet-woo-products .jet-woo-product-button .quantity input.qty {
+	width: var(--wjqa-qty-width) !important;
+	min-width: 0 !important;
+	padding-left: 4px !important;
+	padding-right: 4px !important;
+	text-align: center !important;
+}
+
+/* Beats Elementor's generated per-widget rule, which sets `display: block;
+   width: 100%` on the card button through a six-class selector. That rule comes
+   from the widget's own button width control, so if a site changes that setting
+   and sees no effect, this is why. */
+.jet-woo-product-button .button {
+	width: auto !important;
+	margin: 0 !important;
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Touch targets
+
+   Variation Swatches sizes archive swatches from its own custom properties, with
+   a 30px fallback, so redefining them is enough — no specificity fight, and the
+   plugin's own Archive width/height settings still win if they are ever filled in.
+
+   30px is below a comfortable tap target, and on a swatch the cost of a mis-tap
+   is an order for the wrong variant. Raised only where the pointer is a finger,
+   so mouse users keep the compact card.
+   --------------------------------------------------------------------------- */
+
+@media (pointer: coarse) {
+	:root {
+		--wvs-archive-product-item-height: var(--wjqa-touch-target);
+		--wvs-archive-product-item-width: var(--wjqa-touch-target);
+	}
+}

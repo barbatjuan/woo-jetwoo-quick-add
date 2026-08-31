@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+*.zip
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
