@@ -8,50 +8,52 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Bridges Variation Swatches Pro archive swatches into JetWooBuilder product cards.
+ * Chooses which variation picker the product cards get, and starts it.
  *
- * WHAT ALREADY WORKS WITHOUT THIS PLUGIN
+ * THE PROBLEM
  *
- * JetWooBuilder and Variation Swatches Pro ship an integration with each other.
- * Variation Swatches Pro fires `show_variation`; JetWooBuilder's
- * `handleVariationSwatchesAddToCart` (assets/js/frontend.js) listens for it,
- * finds `.wvs-add-to-cart-button` in the card, and rewrites it into a native
- * WooCommerce AJAX add-to-cart pointing at the chosen variation ID. WooCommerce's
- * `WC_AJAX::add_to_cart()` accepts a variation ID and resolves the parent product
- * and its attributes on its own.
+ * WooCommerce cannot add a variable product to the cart without knowing which
+ * variation is wanted, so JetWooBuilder renders a plain link to the product page.
+ * The customer has to leave the listing to buy.
  *
- * WHAT IS MISSING, AND WHY
+ * WHAT MAKES EITHER FIX SMALL
  *
- * 1. Swatches are never printed. Variation Swatches Pro hooks
- *    `woocommerce_after_shop_loop_item`; JetWooBuilder renders its own card and
- *    never fires it.
+ * `WC_AJAX::add_to_cart()` accepts a variation ID directly: it resolves the parent
+ * product and the variation attributes on its own. The browser never has to send
+ * attribute pairs — it only has to put the right ID on the button. Both pickers below
+ * are just different ways of letting a customer choose that ID.
  *
- * 2. The button never gets the `wvs-add-to-cart-button` class the integration
- *    looks for. Variation Swatches Pro adds it through
- *    `woocommerce_loop_add_to_cart_args`, but JetWooBuilder assembles its own args
- *    and calls `wc_get_template( 'loop/add-to-cart.php' )` directly instead of
- *    `woocommerce_template_loop_add_to_cart()`, which is where WooCommerce applies
- *    that filter.
+ * WHY THERE ARE TWO
  *
- * 3. Variable products get no quantity field.
- *    `Jet_Woo_Builder_Template_Functions::qty_for_woocommerce_loop_add_to_cart_link()`
- *    only builds one for `simple` and `variation` products.
+ * Variation Swatches Pro renders real archive swatches, and where a site owns that
+ * licence they are the better control: bigger targets, colour and image swatches, and
+ * the same widget the customer already meets on the product page. JetWooBuilder and
+ * Variation Swatches Pro even ship an integration with each other — it just never
+ * fires, because JetWooBuilder does not run the hooks it depends on.
  *
- * 4. The swatches are never initialised. Variation Swatches Pro boots them lazily
- *    through an IntersectionObserver that does not fire for swatches inside
- *    JetWooBuilder cards, so the button is never rewired and a click just follows
- *    its href to the product page. Handled in assets/js/shop-cards.js by calling
- *    the plugin's own public jQuery plugin.
+ * But that licence is per-site and paid, the free edition has no archive swatches at
+ * all, and most sites do not have it. Making the whole feature conditional on a paid
+ * plugin means most sites get nothing.
  *
- * Points 1 to 3 are fixed here, through documented extension points — no template
- * overrides are needed.
+ * So this asks what the site actually has and picks accordingly:
+ *
+ *   Variation Swatches Pro present -> reconnect its archive swatches  (WJQA_Variations_Swatches)
+ *   otherwise                      -> render a native dropdown        (WJQA_Variations_Select)
+ *
+ * Neither path needs the other, and a site that installs or drops Variation Swatches
+ * Pro switches over on the next request with nothing to configure.
  */
 class WJQA_Archive_Variations {
 
 	/**
-	 * Class name of the Variation Swatches Pro archive component.
+	 * Reconnect the archive swatches Variation Swatches Pro already knows how to draw.
 	 */
-	const WVS_ARCHIVE_CLASS = 'Woo_Variation_Swatches_Pro_Archive_Page';
+	const PICKER_SWATCHES = 'swatches';
+
+	/**
+	 * Render a native dropdown of the buyable variations.
+	 */
+	const PICKER_SELECT = 'select';
 
 	/**
 	 * Register the feature.
@@ -63,22 +65,29 @@ class WJQA_Archive_Variations {
 			return;
 		}
 
-		add_filter( 'jet-woo-builder/template-functions/product-add-to-cart-settings', [ __CLASS__, 'add_swatch_button_classes' ], 10, 2 );
-		add_filter( 'woocommerce_loop_add_to_cart_link', [ __CLASS__, 'render_swatches_and_quantity' ], 20, 2 );
+		if ( self::PICKER_SWATCHES === self::picker() ) {
+			WJQA_Variations_Swatches::init();
+		} else {
+			WJQA_Variations_Select::init();
+		}
+
+		add_filter( 'body_class', [ __CLASS__, 'body_class' ] );
 	}
 
 	/**
 	 * Whether this feature applies to the current site.
 	 *
+	 * Note what is NOT checked here: Variation Swatches Pro. It decides which picker
+	 * runs, never whether the feature runs at all.
+	 *
 	 * @return bool
 	 */
 	public static function is_enabled() {
 		$enabled = WJQA_Support::has_jet_woo_builder()
-			&& WJQA_Support::has_variation_swatches_pro()
 			&& WJQA_Support::ajax_add_to_cart_enabled();
 
 		/**
-		 * Filters whether variable products get swatches and a quantity in the listing.
+		 * Filters whether variable products get a variation picker in the listing.
 		 *
 		 * @param bool $enabled Whether the feature is active.
 		 */
@@ -86,95 +95,56 @@ class WJQA_Archive_Variations {
 	}
 
 	/**
-	 * Add the classes Variation Swatches Pro would normally add itself.
+	 * Which picker this site gets.
 	 *
-	 * `wvs-add-to-cart-button` is the hook JetWooBuilder's JS looks for;
-	 * `wvs_ajax_add_to_cart` marks the button as not yet resolved to a variation,
-	 * and JetWooBuilder swaps it for `ajax_add_to_cart` once one is chosen.
+	 * @return string One of the PICKER_* constants.
+	 */
+	public static function picker() {
+		$picker = WJQA_Support::has_variation_swatches_pro()
+			? self::PICKER_SWATCHES
+			: self::PICKER_SELECT;
+
+		/**
+		 * Filters which variation picker the product cards use.
+		 *
+		 * Detection is a default, not a verdict. A site that owns Variation Swatches
+		 * Pro but wants the plainer dropdown in the listing — because its attributes
+		 * are long phrases rather than colours, say — can force it:
+		 *
+		 *     add_filter( 'wjqa_variation_picker', fn() => 'select' );
+		 *
+		 * Forcing 'swatches' on a site without the Pro archive component is refused
+		 * below, because there would be nothing to draw and the card would end up with
+		 * no way to buy at all.
+		 *
+		 * @param string $picker Either 'swatches' or 'select'.
+		 */
+		$picker = apply_filters( 'wjqa_variation_picker', $picker );
+
+		if ( self::PICKER_SWATCHES === $picker && WJQA_Support::has_variation_swatches_pro() ) {
+			return self::PICKER_SWATCHES;
+		}
+
+		return self::PICKER_SELECT;
+	}
+
+	/**
+	 * Say which picker is running, on the body element.
 	 *
-	 * @param array      $args    Add-to-cart template args assembled by JetWooBuilder.
-	 * @param WC_Product $product Product being rendered.
+	 * Two jobs. The stylesheet uses it to keep each picker's rules off the other's
+	 * cards, and it tells anyone debugging a card which path they are looking at
+	 * without reading any PHP.
+	 *
+	 * @param array $classes Body classes.
 	 * @return array
 	 */
-	public static function add_swatch_button_classes( $args, $product ) {
-		if ( ! $product instanceof WC_Product || ! $product->is_type( 'variable' ) ) {
-			return $args;
+	public static function body_class( $classes ) {
+		if ( ! WJQA_Support::is_product_listing() ) {
+			return $classes;
 		}
 
-		$classes   = array_filter( explode( ' ', isset( $args['class'] ) ? $args['class'] : '' ) );
-		$classes[] = 'wvs-add-to-cart-button';
-		$classes[] = 'wvs_ajax_add_to_cart';
+		$classes[] = 'wjqa-picker-' . self::picker();
 
-		$args['class'] = implode( ' ', array_unique( $classes ) );
-
-		return $args;
-	}
-
-	/**
-	 * Prepend the swatches and a quantity field to a variable product's cart control.
-	 *
-	 * Priority 20 matters: JetWooBuilder's own quantity filter runs at 10 and
-	 * replaces the markup wholesale, so anything added earlier is discarded.
-	 *
-	 * The quantity and the button are wrapped together so they lay out as one row
-	 * beneath the swatches, mirroring the `form.cart` JetWooBuilder builds for
-	 * simple products.
-	 *
-	 * @param string     $html    Add-to-cart markup.
-	 * @param WC_Product $product Product being rendered.
-	 * @return string
-	 */
-	public static function render_swatches_and_quantity( $html, $product ) {
-		if ( ! $product instanceof WC_Product || ! $product->is_type( 'variable' ) ) {
-			return $html;
-		}
-
-		if ( ! class_exists( self::WVS_ARCHIVE_CLASS ) ) {
-			return $html;
-		}
-
-		ob_start();
-		call_user_func( [ self::WVS_ARCHIVE_CLASS, 'instance' ] )->display_swatches( $product );
-		$swatches = ob_get_clean();
-
-		if ( '' === trim( (string) $swatches ) ) {
-			// Variation Swatches Pro declined to render, for instance because the
-			// product's category is excluded in its settings. Leave the card alone.
-			return $html;
-		}
-
-		return $swatches . '<div class="wjqa-variation-cart-row">' . self::quantity_field( $product ) . $html . '</div>';
-	}
-
-	/**
-	 * Build the quantity field for a variable product.
-	 *
-	 * The meaningful bounds belong to the chosen variation, which is only known in
-	 * the browser. The script narrows them on `show_variation`, and WooCommerce
-	 * validates server side regardless.
-	 *
-	 * @param WC_Product $product Product being rendered.
-	 * @return string
-	 */
-	private static function quantity_field( $product ) {
-		/**
-		 * Filters whether variable product cards show a quantity field.
-		 *
-		 * @param bool       $show    Whether to render the field.
-		 * @param WC_Product $product Product being rendered.
-		 */
-		if ( ! apply_filters( 'wjqa_show_variable_quantity', true, $product ) ) {
-			return '';
-		}
-
-		return woocommerce_quantity_input(
-			[
-				'min_value'   => 1,
-				'max_value'   => -1,
-				'input_value' => 1,
-			],
-			$product,
-			false
-		);
+		return $classes;
 	}
 }

@@ -42,9 +42,9 @@ class WJQA_Support {
 	/**
 	 * Whether the archive component of Variation Swatches Pro is available.
 	 *
-	 * The free edition of Variation Swatches has no archive swatches at all, and
-	 * the Pro licence is per-site, so this is a real commercial gate and not just
-	 * a technical one.
+	 * This decides which variation picker feature B renders. The free edition of
+	 * Variation Swatches has no archive swatches at all, so it does not count: only
+	 * the Pro archive component can do the job, and its licence is per-site.
 	 *
 	 * @return bool
 	 */

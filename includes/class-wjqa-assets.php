@@ -34,8 +34,9 @@ class WJQA_Assets {
 	public static function enqueue() {
 		$navigation_fix = WJQA_Card_Navigation::is_enabled();
 		$variations     = WJQA_Archive_Variations::is_enabled();
+		$mobile_cart    = WJQA_Mobile_Cart::is_enabled();
 
-		if ( ! $navigation_fix && ! $variations ) {
+		if ( ! $navigation_fix && ! $variations && ! $mobile_cart ) {
 			return;
 		}
 
@@ -62,13 +63,16 @@ class WJQA_Assets {
 			self::HANDLE,
 			'wjqaSettings',
 			[
-				'cardNavigationFix' => $navigation_fix,
-				'archiveVariations' => $variations,
-				'addToCartText'     => __( 'Add to cart', 'woocommerce' ),
+				'cardNavigationFix'   => $navigation_fix,
+				'archiveVariations'   => $variations,
+				'variationPicker'     => $variations ? WJQA_Archive_Variations::picker() : '',
+				'mobileCartPlacement' => $mobile_cart,
+				'mobileBreakpoint'    => WJQA_Mobile_Cart::breakpoint(),
+				'addToCartText'       => __( 'Add to cart', 'woocommerce' ),
 			]
 		);
 
-		if ( $variations ) {
+		if ( $variations && WJQA_Archive_Variations::PICKER_SWATCHES === WJQA_Archive_Variations::picker() ) {
 			// Variation Swatches Pro only enqueues its script when it actually renders
 			// a variable product. Load it on every listing so that a JetSmartFilters
 			// AJAX render which pulls variable products into a grid that had none
