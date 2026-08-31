@@ -142,11 +142,37 @@ add is invisible.
 
 ## Customising
 
-The stylesheet sets layout and nothing else — no colours, no borders, no typography,
-and not one rule that touches the button. The dropdown keeps its native browser
-appearance so it inherits whatever the site already looks like.
+The stylesheet sets layout and nothing else, with one unavoidable exception: the
+button once feature C has moved it. Everywhere else there are no colours, no borders
+and no typography, and the dropdown keeps its native browser appearance so it inherits
+whatever the site already looks like.
 
-CSS custom properties, set them anywhere after the stylesheet:
+**Set the moved button's colours. The defaults are a starting point, not a design.**
+
+Card buttons in a hover overlay are routinely given a transparent background, because
+they sit on the product photo and the photo is the background. Moved onto the card's
+own background, a transparent button stops reading as a button and looks like loose
+text — so feature C has to give it an appearance, and only the site knows the right
+one. A site that styles its card button usually scopes that styling to the widths
+where the button was visible, which is exactly the range feature C changes, so that
+rule will not follow the button on its own.
+
+Point these at the same values the site's own stylesheet uses, so the two cannot drift:
+
+```css
+:root {
+	--wjqa-button-bg: #4b151d;
+	--wjqa-button-color: #e7b9c3;
+	--wjqa-button-border: 1px solid #4b151d;
+	--wjqa-button-radius: 0;
+	--wjqa-button-padding: 13px 20px;
+	--wjqa-button-min-width: 150px;
+	--wjqa-button-font: 400 14px/1 Inter, sans-serif;
+	--wjqa-button-letter-spacing: 0.01em;
+}
+```
+
+Layout properties, same place:
 
 ```css
 :root {

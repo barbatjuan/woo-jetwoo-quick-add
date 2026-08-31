@@ -24,6 +24,17 @@
 	/* Space above the cart controls once they move below the price on mobile. */
 	--wjqa-inline-cart-gap: 8px;
 
+	/* Appearance of the moved button. See the "Moved button" section below for why
+	   these exist and why a site will usually want to change them. */
+	--wjqa-button-bg: #4b151d;
+	--wjqa-button-color: #e7b9c3;
+	--wjqa-button-border: 1px solid #4b151d;
+	--wjqa-button-radius: 0;
+	--wjqa-button-padding: 13px 20px;
+	--wjqa-button-min-width: 150px;
+	--wjqa-button-font: 400 14px/1 Inter, sans-serif;
+	--wjqa-button-letter-spacing: 0.01em;
+
 	/* Space between the dropdown and the button below it. */
 	--wjqa-select-gap: 6px;
 
@@ -81,6 +92,54 @@
 
 .jet-woo-products .jet-woo-products__item .jet-woo-products__inner-box > .jet-woo-product-button.wjqa-inline-cart {
 	margin-top: var(--wjqa-inline-cart-gap);
+}
+
+/* ---------------------------------------------------------------------------
+   The moved button
+
+   THIS IS THE ONE PLACE THIS FILE SETS COLOUR, AND IT IS NOT A FREE CHOICE.
+
+   Card buttons in a hover overlay are routinely given a transparent background,
+   because they sit on top of the product photo and the photo is the background.
+   Moved out from under the photo and onto the card's own background, a transparent
+   button stops reading as a button at all — it looks like loose text.
+
+   So a site that styles its card button usually scopes that styling to the widths
+   where the button was visible, which is exactly the range this feature changes.
+   Whatever the button looked like where it used to appear, it now has to look like
+   that where it appears instead, and only the site knows what that is.
+
+   Hence the custom properties: THE DEFAULTS BELOW ARE A STARTING POINT, NOT A
+   DESIGN. Override them with the site's own button values, ideally by pointing them
+   at the same variables or hex codes the site's stylesheet already uses, so the two
+   cannot drift apart:
+
+     :root {
+       --wjqa-button-bg: #4b151d;
+       --wjqa-button-color: #e7b9c3;
+     }
+
+   The selector is deliberately one class heavier than the per-widget rule Elementor
+   generates for the card button, which is what lets this win without `!important`.
+   The scope is the `.wjqa-inline-cart` class rather than a media query, so it tracks
+   the JavaScript breakpoint automatically instead of duplicating the number.
+   --------------------------------------------------------------------------- */
+
+.jet-woo-products .jet-woo-products__item .jet-woo-products__inner-box > .jet-woo-product-button.wjqa-inline-cart .button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: auto;
+	min-width: var(--wjqa-button-min-width);
+	max-width: 100%;
+	padding: var(--wjqa-button-padding);
+	border: var(--wjqa-button-border);
+	border-radius: var(--wjqa-button-radius);
+	background: var(--wjqa-button-bg);
+	color: var(--wjqa-button-color);
+	font: var(--wjqa-button-font);
+	letter-spacing: var(--wjqa-button-letter-spacing);
+	box-shadow: none;
 }
 
 /* ---------------------------------------------------------------------------
