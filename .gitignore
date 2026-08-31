@@ -5,6 +5,11 @@ vendor/
 # Build output
 *.zip
 
+# Local code index. Belongs to one checkout: its paths and contents are specific to
+# this working copy, so sharing it across clones or worktrees would answer questions
+# about the wrong bytes.
+.codegraph/
+
 # Editor and OS noise
 .DS_Store
 Thumbs.db
