@@ -54,6 +54,22 @@ class WJQA_Variations_Swatches {
 	const WVS_ARCHIVE_CLASS = 'Woo_Variation_Swatches_Pro_Archive_Page';
 
 	/**
+	 * Whether JetWooBuilder is the thing currently building this cart control.
+	 *
+	 * `woocommerce_loop_add_to_cart_link` fires for every product loop on the site,
+	 * not only JetWooBuilder's. On an ordinary WooCommerce loop Variation Swatches Pro
+	 * already prints its swatches through `woocommerce_after_shop_loop_item`, so
+	 * adding a set here too puts two identical pickers on one card — measured, not
+	 * assumed: a standard loop card came out with two.
+	 *
+	 * That matters on any site where JetWooBuilder powers some archives and the theme
+	 * or another builder powers the rest, which is common.
+	 *
+	 * @var bool
+	 */
+	private static $building_jet_card = false;
+
+	/**
 	 * Register the picker.
 	 *
 	 * @return void
@@ -79,6 +95,12 @@ class WJQA_Variations_Swatches {
 			return $args;
 		}
 
+		// JetWooBuilder applies this filter immediately before it loads the add-to-cart
+		// template, and nothing else on the site fires it. Recording that here is what
+		// lets the render below tell a JetWooBuilder card apart from an ordinary
+		// WooCommerce loop — see $building_jet_card.
+		self::$building_jet_card = true;
+
 		$classes   = array_filter( explode( ' ', isset( $args['class'] ) ? $args['class'] : '' ) );
 		$classes[] = 'wvs-add-to-cart-button';
 		$classes[] = 'wvs_ajax_add_to_cart';
@@ -103,6 +125,18 @@ class WJQA_Variations_Swatches {
 	 * @return string
 	 */
 	public static function render_swatches_and_quantity( $html, $product ) {
+		// Consume the flag whatever happens next, so a render that bails out cannot
+		// leave it set for the following product.
+		$building_jet_card       = self::$building_jet_card;
+		self::$building_jet_card = false;
+
+		if ( ! $building_jet_card ) {
+			// An ordinary WooCommerce loop. Variation Swatches Pro handles those
+			// itself through `woocommerce_after_shop_loop_item`; adding a set here
+			// would put two identical pickers on the same card.
+			return $html;
+		}
+
 		if ( ! $product instanceof WC_Product || ! $product->is_type( 'variable' ) ) {
 			return $html;
 		}
