@@ -166,7 +166,7 @@ Point these at the same values the site's own stylesheet uses, so the two cannot
 	--wjqa-button-border: 1px solid #4b151d;
 	--wjqa-button-radius: 0;
 	--wjqa-button-padding: 13px 20px;
-	--wjqa-button-min-width: 150px;
+	--wjqa-button-width: 100%;
 	--wjqa-button-font: 400 14px/1 Inter, sans-serif;
 	--wjqa-button-letter-spacing: 0.01em;
 }

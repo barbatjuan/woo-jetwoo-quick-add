@@ -42,7 +42,13 @@
 	--wjqa-button-border: 1px solid #4b151d;
 	--wjqa-button-radius: 0;
 	--wjqa-button-padding: 13px 20px;
-	--wjqa-button-min-width: 150px;
+
+	/* Full card width. In the overlay the button was sized to its label, because it
+	   floated over the photo and a full-width bar would have covered it. Below the
+	   price there is nothing to cover, the card is narrow, and the dropdown above it
+	   is already full width — so matching that is what makes the two read as one
+	   control instead of two loose pieces. */
+	--wjqa-button-width: 100%;
 	--wjqa-button-font: 400 14px/1 Inter, sans-serif;
 	--wjqa-button-letter-spacing: 0.01em;
 
@@ -141,8 +147,8 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: auto;
-	min-width: var(--wjqa-button-min-width);
+	width: var(--wjqa-button-width);
+	min-width: 0;
 	max-width: 100%;
 	padding: var(--wjqa-button-padding);
 	border: var(--wjqa-button-border);
