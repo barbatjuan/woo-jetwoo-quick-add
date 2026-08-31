@@ -179,6 +179,7 @@ Layout properties, same place:
 	--wjqa-select-gap: 6px;        /* gap under the dropdown */
 	--wjqa-select-height: auto;    /* dropdown height; 40px on touch pointers */
 	--wjqa-inline-cart-gap: 8px;   /* gap above the controls once moved on mobile */
+	--wjqa-inline-cart-order: 9;   /* flex order of the moved controls in the card */
 }
 ```
 

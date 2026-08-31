@@ -3,10 +3,12 @@
  *
  * DELIBERATELY MINIMAL.
  *
- * This file sets layout and nothing else. No colours, no borders, no typography, no
- * `!important`, and not one rule that touches the card's button. The dropdown keeps
- * the browser's native appearance, which means it inherits whatever the site already
- * looks like and cannot drift from it when the theme changes.
+ * This file sets layout and nothing else, with one unavoidable exception: the button
+ * once feature C has moved it out of the hover overlay, which is explained where that
+ * rule lives. Everywhere else there are no colours, no borders, no typography and no
+ * `!important`. The dropdown keeps the browser's native appearance, which means it
+ * inherits whatever the site already looks like and cannot drift from it when the
+ * theme changes.
  *
  * The reason is that the picker is injected into a live storefront whose card design
  * belongs to Elementor and JetWooBuilder. Anything this file styles is a decision
@@ -23,6 +25,15 @@
 :root {
 	/* Space above the cart controls once they move below the price on mobile. */
 	--wjqa-inline-cart-gap: 8px;
+
+	/* Flex order of the moved controls inside the card.
+
+	   Appending the node is not enough to place it last. The card's inner box is a
+	   flex column, and its children carry explicit `order` values — the title and
+	   price are commonly pushed down with `order: 1` — so DOM position does not
+	   decide what the customer sees. This has to outrank whatever the card sets,
+	   which is why the default is comfortably high rather than just one more. */
+	--wjqa-inline-cart-order: 9;
 
 	/* Appearance of the moved button. See the "Moved button" section below for why
 	   these exist and why a site will usually want to change them. */
@@ -91,6 +102,7 @@
    --------------------------------------------------------------------------- */
 
 .jet-woo-products .jet-woo-products__item .jet-woo-products__inner-box > .jet-woo-product-button.wjqa-inline-cart {
+	order: var(--wjqa-inline-cart-order);
 	margin-top: var(--wjqa-inline-cart-gap);
 }
 
