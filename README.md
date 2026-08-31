@@ -3,74 +3,94 @@
 Lets customers add products to the cart straight from a JetWooBuilder product grid —
 variable products included — instead of being sent to the single product page.
 
+No paid dependency. Version 1.x needed Variation Swatches Pro for variable products;
+2.0 replaced that with a native picker and dropped the requirement entirely.
+
 ## Why this exists
 
-**On a stock WooCommerce loop none of this is needed.** WooCommerce renders AJAX
-add-to-cart buttons on its own, and Variation Swatches Pro hooks
-`woocommerce_after_shop_loop_item` to print archive swatches.
+**On a stock WooCommerce loop, half of this is not needed.** WooCommerce renders AJAX
+add-to-cart buttons on its own.
 
-JetWooBuilder replaces that loop with its own card markup and never fires those
-hooks. This plugin is the glue that puts the behaviour back. On a site without
-JetWooBuilder it deliberately does nothing.
+JetWooBuilder replaces that loop with its own card markup and its own click handling,
+which breaks them. This plugin is the glue that puts the behaviour back — and adds the
+one thing WooCommerce has never done in a listing: letting a variable product be
+chosen without opening its page.
+
+On a site without JetWooBuilder it deliberately does nothing.
 
 ## The two features
 
-Each one is independent, has its own dependency check, and is a no-op when its
-stack is absent.
+Each one is independent, has its own dependency check, and is a no-op when its stack
+is absent.
 
 ### A. The card stops navigating away
 
 **Needs:** JetWooBuilder.
 
-With the products widget option *Clickable item* enabled, JetWooBuilder wraps the
-card in `.jet-woo-item-overlay-wrap` and binds a delegated click handler on
-`document` that ends in `window.location = permalink`. It excludes the compare,
-wishlist and quick view buttons — but not the add-to-cart button.
+With the products widget option *Clickable item* enabled, JetWooBuilder wraps the card
+in `.jet-woo-item-overlay-wrap` and binds a delegated click handler on `document` that
+ends in `window.location = permalink`. It excludes the compare, wishlist and quick view
+buttons — but not the add-to-cart button, and not the variation picker.
 
-The result: clicking *Add to cart* fires the WooCommerce AJAX request **and**
-navigates to the product page. The item is genuinely added, but the customer is
-thrown out of the listing and it looks broken.
+The result: clicking *Add to cart* fires the WooCommerce AJAX request **and** navigates
+to the product page. The item is genuinely added, but the customer is thrown out of the
+listing and it looks broken.
 
-WooCommerce calls `preventDefault()`, which stops the link's default action and
-does nothing about propagation, so both handlers run.
+WooCommerce calls `preventDefault()`, which stops the link's default action and does
+nothing about propagation, so both handlers run.
 
-**The fix.** The two listeners sit on different roots: WooCommerce on
-`document.body`, JetWooBuilder on `document`, which is further out. A handler on
-`document.body` that calls `stopPropagation()` keeps the event from ever reaching
-`document`, while WooCommerce's own handler still runs — `stopPropagation()` does
-not affect other handlers bound to the same element.
+**The fix.** The two listeners sit on different roots: WooCommerce on `document.body`,
+JetWooBuilder on `document`, which is further out. A handler on `document.body` that
+calls `stopPropagation()` keeps the event from ever reaching `document`, while
+WooCommerce's own handler still runs — `stopPropagation()` does not affect other
+handlers bound to the same element.
 
-### B. Variable products get variants and a quantity in the card
+### B. Variable products can be chosen from the card
 
-**Needs:** JetWooBuilder **and** Variation Swatches **Pro** (see licensing below).
+**Needs:** JetWooBuilder. Nothing else.
 
-JetWooBuilder and Variation Swatches Pro already ship an integration with each
-other. Variation Swatches Pro fires `show_variation`; JetWooBuilder's
-`handleVariationSwatchesAddToCart` rewrites the card button into a native
-WooCommerce AJAX add-to-cart pointing at the chosen variation ID, and
-`WC_AJAX::add_to_cart()` resolves the parent product and attributes from that ID.
+WooCommerce cannot add a variable product to the cart without knowing which variation
+is wanted, so JetWooBuilder renders a plain link to the product page.
 
-Four links are missing, and this plugin supplies them:
+**What makes the fix small.** `WC_AJAX::add_to_cart()` accepts a variation ID directly:
+it resolves the parent product and the variation attributes on its own. The browser
+never has to send attribute pairs — it only has to put the right ID on the button. So
+the whole feature is "render a list of variation IDs, let the customer pick one, and
+rewrite the button".
 
-| # | Missing | Why | Fixed by |
-|---|---------|-----|----------|
-| 1 | Swatches are never printed | JetWooBuilder never fires `woocommerce_after_shop_loop_item` | `woocommerce_loop_add_to_cart_link` at priority 20 |
-| 2 | Button lacks `wvs-add-to-cart-button` | JetWooBuilder calls `wc_get_template( 'loop/add-to-cart.php' )` directly, skipping `woocommerce_loop_add_to_cart_args` | `jet-woo-builder/template-functions/product-add-to-cart-settings` |
-| 3 | No quantity field on variable products | `qty_for_woocommerce_loop_add_to_cart_link()` only handles `simple` and `variation` | Same filter as #1 |
-| 4 | Swatches never initialise | Variation Swatches Pro's IntersectionObserver does not fire inside JetWooBuilder cards | `$( el ).WooVariationSwatchesPro()`, the plugin's own public API |
+| Step | Where |
+|---|---|
+| Print a `<select>` of buyable variations before the button | `woocommerce_loop_add_to_cart_link` at priority 20 |
+| Tag the button so the script can find it | `jet-woo-builder/template-functions/product-add-to-cart-settings` |
+| Point the button at the chosen variation and relabel it | `assets/js/shop-cards.js` |
+| Swap the card's price range for the chosen variation's price | same |
+
+Priority 20 matters: JetWooBuilder's own quantity filter runs at 10 and replaces the
+markup wholesale.
 
 No template overrides are used — every hook above is a documented extension point.
+
+#### Scope, deliberately
+
+Only variable products with a **single variation attribute** are handled. Matching a
+combination of attributes to a variation needs a resolution matrix plus handling for
+partially-chosen and "any" combinations, and getting that subtly wrong on a live shop
+means selling the wrong thing.
+
+A multi-attribute product keeps the stock behaviour: the card links to the product
+page, where WooCommerce does it properly. The same fallback applies when a product has
+no buyable variations left after filtering.
+
+**Variations that are not purchasable are left out of the list.** A variation with no
+price set is the common case — it is in stock and published, so it looks fine in the
+admin, but `is_purchasable()` is false and adding it fails silently. Offering it would
+hand the customer a button that does nothing.
 
 ## Requirements
 
 - WordPress 6.0+, PHP 7.4+
 - WooCommerce 8.0+ with **Enable AJAX add to cart buttons on archives** turned on
 - JetWooBuilder
-- Feature B only: **Variation Swatches for WooCommerce — Pro**
-
-> **Licensing.** Variation Swatches Pro is licensed per site and the free edition
-> has no archive swatches at all. Feature B simply will not run without it. If you
-> sell this as a service, the licence is part of the deal or the feature is not.
 
 ## Install
 
@@ -78,42 +98,33 @@ No template overrides are used — every hook above is a documented extension po
 git clone https://github.com/barbatjuan/woo-jetwoo-quick-add.git
 ```
 
-Drop the folder in `wp-content/plugins/` and activate. No settings screen: the
-plugin decides what to run from what is installed.
+Drop the folder in `wp-content/plugins/` and activate. No settings screen: the plugin
+decides what to run from what is installed.
 
 ## Per-site configuration
 
 The plugin ships the code. These are settings, and they belong to each site.
 
 **WooCommerce → Settings → Products**
-- *Enable AJAX add to cart buttons on archives*: **on** (required)
+- *Enable AJAX add to cart buttons on archives*: **on** (required — feature B checks it)
 - *Redirect to the cart page after successful addition*: **off**
 
-**WooCommerce → Variation Swatches → Archive** (feature B)
-
-| Setting | Value | Why |
-|---|---|---|
-| Show on archive | on | Prints the swatches at all |
-| Product wrapper selector | `.jet-woo-products__item, .wvs-archive-product-wrapper` | The script runs `.closest()` with this; JetWooBuilder cards do not carry the default class |
-| Default selected | **off** (recommended) | With it on, a distracted customer buys a variant they never picked |
-| AJAX variation threshold | ≥ your largest variation count | At `0` every card fetches its variations over AJAX; above the threshold they are embedded in the HTML |
-| Alignment | center | Matches the centred card layout |
-
-**Watch out — the attribute type is resolved product-first.** A product can carry
-its own `_woo_variation_swatches_product_settings` override, including
-`default_to_button`, and it beats the global setting. If a global change appears to
-do nothing, check the product.
+Give the customer somewhere to see the result: an Elementor Menu Cart, a side cart, or
+any widget that refreshes on WooCommerce's cart fragments. Without one, a successful
+add is invisible.
 
 ## Customising
+
+The stylesheet sets layout and nothing else — no colours, no borders, no typography,
+and not one rule that touches the button. The dropdown keeps its native browser
+appearance so it inherits whatever the site already looks like.
 
 CSS custom properties, set them anywhere after the stylesheet:
 
 ```css
 :root {
-	--wjqa-qty-width: 64px;     /* quantity field width */
-	--wjqa-control-gap: 8px;    /* gap between quantity and button */
-	--wjqa-swatch-gap: 10px;    /* gap under the swatches */
-	--wjqa-touch-target: 48px;  /* swatch size on touch pointers */
+	--wjqa-select-gap: 6px;      /* gap under the dropdown */
+	--wjqa-select-height: auto;  /* dropdown height; 40px on touch pointers */
 }
 ```
 
@@ -122,9 +133,13 @@ Filters:
 | Filter | Default | Purpose |
 |---|---|---|
 | `wjqa_enable_card_navigation_fix` | JetWooBuilder present | Turn feature A off |
-| `wjqa_enable_archive_variations` | full stack present | Turn feature B off |
-| `wjqa_show_variable_quantity` | `true` | Hide the quantity field on variable cards |
+| `wjqa_enable_archive_variations` | JetWooBuilder + AJAX add to cart | Turn feature B off |
+| `wjqa_show_variable_quantity` | `false` | Add a quantity field beside the button |
 | `wjqa_is_product_listing` | shop, product taxonomies, search, front page, single product | Where assets load |
+
+`wjqa_show_variable_quantity` is off because JetWooBuilder is usually not showing a
+quantity on simple products either, and switching it on for only half the grid looks
+like a bug.
 
 ## Verifying an install
 
@@ -132,28 +147,30 @@ In a private window, as a guest:
 
 1. Shop, simple product → URL does not change, cart counter rises.
 2. Card image or title → still opens the product page.
-3. Variable card → swatches visible, none preselected.
+3. Variable card → a dropdown appears, nothing preselected.
 4. *Add to cart* without choosing → goes to the product page. Correct: WooCommerce
-   cannot add a variable product without a variant.
-5. Pick a variant → label becomes *Add to cart*, and `data-product_id` on the
-   button is the **variation** ID, not the parent's.
-6. Set a quantity, add → URL does not change, counter rises by that quantity.
-7. Cart page → correct variant and quantity on the line.
-8. Apply a JetSmartFilters filter, repeat 5–6 → still works after the AJAX render.
-9. Phone width → swatches at least 44px tall, no horizontal overflow.
-10. Console → no new errors.
+   cannot add a variable product without a variation.
+5. Pick a variation → the label becomes *Add to cart*, the card price narrows from a
+   range to that variation's price, and `data-product_id` on the button is the
+   **variation** ID, not the parent's.
+6. Add → URL does not change, counter rises, and the dropdown resets itself.
+7. Cart page → correct variation on the line.
+8. A variation with no price is absent from the dropdown.
+9. Apply a JetSmartFilters filter, repeat 5–6 → still works after the AJAX render.
+10. Phone width → dropdown at least 40px tall, no horizontal overflow.
+11. Console → no new errors.
 
-Useful probe after picking a variant:
+Useful probe after picking a variation:
 
 ```js
-document.querySelector( '.wvs-add-to-cart-button' ).dataset
+document.querySelector( '.wjqa-add-to-cart' ).dataset
 ```
 
 ## Upstream workarounds
 
-Both features compensate for third-party behaviour rather than extending it. They
-are all guarded, so if upstream changes they become dead weight rather than
-breakage — but they should be revisited.
+Feature A compensates for third-party behaviour rather than extending it. It is
+guarded, so if upstream changes it becomes dead weight rather than breakage — but it
+should be revisited.
 
 Verified against:
 
@@ -161,10 +178,9 @@ Verified against:
 |---|---|
 | WooCommerce | 11.0.1 |
 | JetWooBuilder | 2.3.4 |
-| Variation Swatches Pro | 2.3.0 |
 
 The most fragile piece is the class names the CSS and JS key on
-(`.jet-woo-item-overlay-wrap`, `.jet-woo-product-button`, `.wvs-add-to-cart-button`).
+(`.jet-woo-item-overlay-wrap`, `.jet-woo-product-button`, `.jet-woo-products__item`).
 If JetWooBuilder renames them, the symptoms return; nothing else breaks.
 
 ## License

@@ -3,7 +3,7 @@
  * Plugin Name:       Woo JetWooBuilder Quick Add
  * Plugin URI:        https://github.com/barbatjuan/woo-jetwoo-quick-add
  * Description:       Lets customers add products to the cart straight from a JetWooBuilder product grid — variable products included — instead of being sent to the single product page.
- * Version:           1.0.0
+ * Version:           2.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            barbatjuan
@@ -17,19 +17,19 @@
  * ---------------------------------------------------------------------------
  * WHY THIS PLUGIN EXISTS
  *
- * On a stock WooCommerce loop none of this is needed. WooCommerce renders AJAX
- * add-to-cart buttons on its own, and Variation Swatches Pro hooks
- * `woocommerce_after_shop_loop_item` to print archive swatches.
+ * On a stock WooCommerce loop half of this is not needed: WooCommerce renders AJAX
+ * add-to-cart buttons on its own. JetWooBuilder replaces that loop with its own card
+ * markup and its own click handling, which breaks them. This plugin is the glue that
+ * puts the behaviour back, and adds the one thing WooCommerce has never done in a
+ * listing — letting a variable product be chosen without opening its page.
  *
- * JetWooBuilder replaces that loop with its own card markup and never fires those
- * hooks, which breaks both. This plugin is the glue that puts them back, nothing
- * more. On a site without JetWooBuilder it deliberately does nothing.
+ * On a site without JetWooBuilder it deliberately does nothing.
  * ---------------------------------------------------------------------------
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WJQA_VERSION', '1.0.0' );
+define( 'WJQA_VERSION', '2.0.0' );
 define( 'WJQA_FILE', __FILE__ );
 define( 'WJQA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WJQA_URL', plugin_dir_url( __FILE__ ) );
@@ -43,7 +43,6 @@ define( 'WJQA_URL', plugin_dir_url( __FILE__ ) );
  * numbers honest; a workaround with no recorded expiry date is debt.
  */
 define( 'WJQA_TESTED_JET_WOO_BUILDER', '2.3.4' );
-define( 'WJQA_TESTED_VARIATION_SWATCHES_PRO', '2.3.0' );
 define( 'WJQA_TESTED_WOOCOMMERCE', '11.0.1' );
 
 require_once WJQA_PATH . 'includes/class-wjqa-support.php';

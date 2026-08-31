@@ -40,20 +40,6 @@ class WJQA_Support {
 	}
 
 	/**
-	 * Whether the archive component of Variation Swatches Pro is available.
-	 *
-	 * The free edition of Variation Swatches has no archive swatches at all, and
-	 * the Pro licence is per-site, so this is a real commercial gate and not just
-	 * a technical one.
-	 *
-	 * @return bool
-	 */
-	public static function has_variation_swatches_pro() {
-		return class_exists( 'Woo_Variation_Swatches_Pro_Archive_Page' )
-			&& function_exists( 'woo_variation_swatches' );
-	}
-
-	/**
 	 * Whether WooCommerce is set to add products to the cart over AJAX.
 	 *
 	 * With this off, WooCommerce renders plain links that reload the page and the

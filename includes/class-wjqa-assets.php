@@ -67,13 +67,5 @@ class WJQA_Assets {
 				'addToCartText'     => __( 'Add to cart', 'woocommerce' ),
 			]
 		);
-
-		if ( $variations ) {
-			// Variation Swatches Pro only enqueues its script when it actually renders
-			// a variable product. Load it on every listing so that a JetSmartFilters
-			// AJAX render which pulls variable products into a grid that had none
-			// still has the JS it needs.
-			wp_enqueue_script( 'woo-variation-swatches-pro' );
-		}
 	}
 }
