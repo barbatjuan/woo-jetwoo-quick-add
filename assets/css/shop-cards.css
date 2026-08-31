@@ -21,6 +21,9 @@
  */
 
 :root {
+	/* Space above the cart controls once they move below the price on mobile. */
+	--wjqa-inline-cart-gap: 8px;
+
 	/* Space between the dropdown and the button below it. */
 	--wjqa-select-gap: 6px;
 
@@ -62,6 +65,22 @@
 	:root {
 		--wjqa-select-height: 40px;
 	}
+}
+
+/* ---------------------------------------------------------------------------
+   Cart controls moved below the price on mobile
+
+   Only spacing. The controls carry every rule they already had — they were moved,
+   not rebuilt — so alignment, colours and the button itself are untouched.
+
+   The selector is this long on purpose: Elementor's generated per-widget rule sets
+   `margin: 0` on the card button through a four-class selector, and a shorter one
+   here would lose to it and leave the controls flush against the price. Winning on
+   specificity keeps this file free of `!important`.
+   --------------------------------------------------------------------------- */
+
+.jet-woo-products .jet-woo-products__item .jet-woo-products__inner-box > .jet-woo-product-button.wjqa-inline-cart {
+	margin-top: var(--wjqa-inline-cart-gap);
 }
 
 /* ---------------------------------------------------------------------------

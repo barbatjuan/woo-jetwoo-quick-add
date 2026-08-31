@@ -7,9 +7,13 @@
  *      JetWooBuilder's "Clickable item" navigation.
  *   2. archiveVariations — turn the card's "Select options" link into a real AJAX
  *      add-to-cart once the customer picks a variation.
+ *   3. mobileCartPlacement — move the cart controls out of the hover overlay on
+ *      small screens, where there is no hover to reveal them with.
  *
- * Every handler is delegated on `document.body`, so cards that arrive later — a
+ * Handlers are delegated on `document.body`, so cards that arrive later — a
  * JetSmartFilters AJAX render, for instance — work with no re-initialisation.
+ * Feature 3 is the exception: re-parenting a node is not something a delegated
+ * handler can do for elements that do not exist yet, so it listens for the filter.
  */
 ( function ( $, settings ) {
 	'use strict';
@@ -188,11 +192,77 @@
 		} );
 	}
 
+	/**
+	 * Feature 3 — reachable cart controls on a touch screen.
+	 *
+	 * The control is moved, never cloned or rebuilt, so it keeps every style rule
+	 * that applies to it and every piece of state the other features wrote onto it.
+	 *
+	 * It also stays inside `.jet-woo-item-overlay-wrap`, which is what keeps feature
+	 * 1 protecting it from JetWooBuilder's card navigation in its new home.
+	 */
+	function initMobileCartPlacement() {
+		var query = window.matchMedia( '(max-width: ' + parseInt( settings.mobileBreakpoint, 10 ) + 'px)' );
+
+		function place() {
+			$( '.jet-woo-products__item' ).each( function () {
+				var $item = $( this ),
+					$inner = $item.children( '.jet-woo-products__inner-box' ).first(),
+					$controls = $item.find( '.jet-woo-product-button' ).first(),
+					$home;
+
+				if ( ! $inner.length || ! $controls.length ) {
+					return;
+				}
+
+				if ( query.matches ) {
+					if ( $controls.parent().is( $inner ) ) {
+						return;
+					}
+
+					// Remember the overlay so a resize back to a wide screen can put
+					// the card back exactly as JetWooBuilder rendered it.
+					$controls.data( 'wjqaOverlay', $controls.parent() );
+					$inner.append( $controls.addClass( 'wjqa-inline-cart' ) );
+
+					return;
+				}
+
+				$home = $controls.data( 'wjqaOverlay' );
+
+				if ( ! $home || ! $home.length ) {
+					return;
+				}
+
+				$home.append( $controls.removeClass( 'wjqa-inline-cart' ) );
+				$controls.removeData( 'wjqaOverlay' );
+			} );
+		}
+
+		$( place );
+
+		// Rotating a tablet crosses the breakpoint without reloading the page.
+		if ( query.addEventListener ) {
+			query.addEventListener( 'change', place );
+		} else if ( query.addListener ) {
+			query.addListener( place );
+		}
+
+		// JetSmartFilters swaps the whole grid out, so fresh cards need placing.
+		$( document ).on( 'jet-filter-content-rendered', function () {
+			window.setTimeout( place, 0 );
+		} );
+	}
+
 	if ( settings.cardNavigationFix ) {
 		initCardNavigationFix();
 	}
 
 	if ( settings.archiveVariations ) {
 		initArchiveVariations();
+	}
+
+	if ( settings.mobileCartPlacement ) {
+		initMobileCartPlacement();
 	}
 } )( window.jQuery, window.wjqaSettings );

@@ -18,7 +18,7 @@ chosen without opening its page.
 
 On a site without JetWooBuilder it deliberately does nothing.
 
-## The two features
+## The three features
 
 Each one is independent, has its own dependency check, and is a no-op when its stack
 is absent.
@@ -86,6 +86,33 @@ price set is the common case — it is in stock and published, so it looks fine 
 admin, but `is_purchasable()` is false and adding it fails silently. Offering it would
 hand the customer a button that does nothing.
 
+### C. The cart controls are reachable on a phone
+
+**Needs:** JetWooBuilder.
+
+Several products presets put the add-to-cart control inside `.hovered-content`, which
+is `visibility: hidden` until the card is hovered. A touch screen has no hover, so on
+a phone the control is simply unreachable.
+
+JetWooBuilder's own answer is the widget's *Hover on touch* option, which reveals the
+overlay on the first tap. That spends the tap the customer meant for the card and
+leaves the controls floating over the product image, so sites routinely give up and
+hide the overlay on mobile with a stylesheet rule — which removes the last way to buy
+from the listing on the device most customers are using.
+
+**The fix.** Below the breakpoint, move `.jet-woo-product-button` out of the overlay
+and append it to the card's inner box, after the title and price, where it is a normal
+block in the flow. Nothing is cloned and nothing is restyled: the same node is
+re-parented, so it keeps every rule that applies to it.
+
+That placement also sidesteps any "hide the overlay on mobile" rule without having to
+fight it, because the moved control is no longer inside the overlay that rule targets.
+The overlay is left where it is, empty and still hidden — the site's own styling
+decision is preserved rather than overridden.
+
+The control stays inside `.jet-woo-item-overlay-wrap`, so feature A keeps protecting
+it from the card navigation in its new home.
+
 ## Requirements
 
 - WordPress 6.0+, PHP 7.4+
@@ -123,8 +150,9 @@ CSS custom properties, set them anywhere after the stylesheet:
 
 ```css
 :root {
-	--wjqa-select-gap: 6px;      /* gap under the dropdown */
-	--wjqa-select-height: auto;  /* dropdown height; 40px on touch pointers */
+	--wjqa-select-gap: 6px;        /* gap under the dropdown */
+	--wjqa-select-height: auto;    /* dropdown height; 40px on touch pointers */
+	--wjqa-inline-cart-gap: 8px;   /* gap above the controls once moved on mobile */
 }
 ```
 
@@ -134,8 +162,13 @@ Filters:
 |---|---|---|
 | `wjqa_enable_card_navigation_fix` | JetWooBuilder present | Turn feature A off |
 | `wjqa_enable_archive_variations` | JetWooBuilder + AJAX add to cart | Turn feature B off |
+| `wjqa_enable_mobile_cart_placement` | JetWooBuilder present | Turn feature C off |
+| `wjqa_mobile_breakpoint` | `767` | Width at or below which feature C moves the controls |
 | `wjqa_show_variable_quantity` | `false` | Add a quantity field beside the button |
 | `wjqa_is_product_listing` | shop, product taxonomies, search, front page, single product | Where assets load |
+
+Align `wjqa_mobile_breakpoint` with whatever breakpoint the theme's own mobile rules
+use, so the two never disagree about what "mobile" means.
 
 `wjqa_show_variable_quantity` is off because JetWooBuilder is usually not showing a
 quantity on simple products either, and switching it on for only half the grid looks
@@ -157,8 +190,13 @@ In a private window, as a guest:
 7. Cart page → correct variation on the line.
 8. A variation with no price is absent from the dropdown.
 9. Apply a JetSmartFilters filter, repeat 5–6 → still works after the AJAX render.
-10. Phone width → dropdown at least 40px tall, no horizontal overflow.
-11. Console → no new errors.
+10. Phone width → the controls sit below the price rather than in the overlay, the
+    dropdown is at least 40px tall, and there is no horizontal overflow.
+11. Phone width → tapping the image or title still opens the product page, and
+    tapping the dropdown or the button does not.
+12. Resize across the breakpoint without reloading → the controls move back into the
+    overlay above it and back below the price under it.
+13. Console → no new errors.
 
 Useful probe after picking a variation:
 
