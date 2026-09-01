@@ -58,6 +58,18 @@ git archive --format=zip --prefix="$SLUG/" -o "$ZIP" HEAD
 REQUIRES=$(grep -m1 -E '^\s*\*\s*Requires at least:' "$SLUG.php" | sed -E 's/.*Requires at least:[[:space:]]*//' | tr -d '[:space:]')
 REQUIRES_PHP=$(grep -m1 -E '^\s*\*\s*Requires PHP:' "$SLUG.php" | sed -E 's/.*Requires PHP:[[:space:]]*//' | tr -d '[:space:]')
 
+# Subject lines since the last tag, for the "View details" screen. Someone deciding
+# whether to press Update on a client's live shop deserves to see what it changes; an
+# update notice with nothing behind it gets postponed forever, or applied blind.
+PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+if [ -n "$PREV_TAG" ]; then
+	RANGE="$PREV_TAG..HEAD"
+else
+	RANGE="HEAD"
+fi
+CHANGELOG=$(git log --no-merges --format='%s' "$RANGE" | sed 's/[\\"]/\\&/g' | sed 's|^|<li>|; s|$|</li>|' | tr -d '\n')
+[ -n "$CHANGELOG" ] || CHANGELOG="<li>No changes recorded.</li>"
+
 cat > "dist/$SLUG.json" <<JSON
 {
   "name": "Woo JetWooBuilder Quick Add",
@@ -67,9 +79,18 @@ cat > "dist/$SLUG.json" <<JSON
   "requires_php": "$REQUIRES_PHP",
   "last_updated": "$(date -u '+%Y-%m-%d %H:%M:%S')",
   "homepage": "https://github.com/barbatjuan/$SLUG",
-  "download_url": "$BASE_URL/$SLUG-$VERSION.zip"
+  "download_url": "$BASE_URL/$SLUG-$VERSION.zip",
+  "sections": {
+    "changelog": "<h4>$VERSION</h4><ul>$CHANGELOG</ul>"
+  }
 }
 JSON
+
+# A manifest that does not parse is worse than none: the site silently stops checking.
+if command -v php >/dev/null 2>&1; then
+	php -r 'json_decode(file_get_contents($argv[1])); exit(json_last_error() === JSON_ERROR_NONE ? 0 : 1);' "dist/$SLUG.json" \
+		|| { echo "error: generated manifest is not valid JSON" >&2; exit 1; }
+fi
 
 echo "built  $ZIP"
 echo "built  dist/$SLUG.json  -> $BASE_URL/$SLUG-$VERSION.zip"
