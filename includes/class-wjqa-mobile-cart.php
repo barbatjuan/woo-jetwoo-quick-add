@@ -12,9 +12,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * THE PROBLEM
  *
- * Several JetWooBuilder products presets put the add-to-cart control inside
- * `.hovered-content`, which is `visibility: hidden` until the card is hovered.
- * A touch screen has no hover, so on a phone the control is simply unreachable.
+ * Most JetWooBuilder products presets — every one except the first — put the
+ * add-to-cart control inside `.hovered-content`, which is `visibility: hidden` until
+ * the card is hovered. A touch screen has no hover, so on a phone the control is
+ * simply unreachable.
+ *
+ * A preset that already shows its button in the normal flow has nothing to fix, and
+ * the script requires the control to be inside a `.hovered-content` before touching
+ * it. Moving a button that was never hidden would be an unasked-for redesign.
  *
  * JetWooBuilder's own answer is the widget's "Hover on touch" option, which reveals
  * the overlay on the first tap. That spends the tap the customer meant for the card

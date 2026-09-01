@@ -332,18 +332,19 @@
 		var query = window.matchMedia( '(max-width: ' + parseInt( settings.mobileBreakpoint, 10 ) + 'px)' );
 
 		function place() {
-			$( '.jet-woo-products__item' ).each( function () {
-				var $item = $( this ),
-					$inner = $item.children( '.jet-woo-products__inner-box' ).first(),
-					$controls = $item.find( '.jet-woo-product-button' ).first(),
-					$home;
+			if ( query.matches ) {
+				$( '.jet-woo-products__item' ).each( function () {
+					var $item = $( this ),
+						$inner = $item.children( '.jet-woo-products__inner-box' ).first(),
+						// Only a control that is INSIDE the hover overlay. That is the
+						// one this feature exists to rescue, and requiring it keeps the
+						// feature off presets that already show their button in the
+						// normal flow — moving that button would be an unasked-for
+						// redesign, not a fix. It also means an already-moved control
+						// cannot match twice.
+						$controls = $item.find( '.hovered-content .jet-woo-product-button' ).first();
 
-				if ( ! $inner.length || ! $controls.length ) {
-					return;
-				}
-
-				if ( query.matches ) {
-					if ( $controls.parent().is( $inner ) ) {
+					if ( ! $inner.length || ! $controls.length ) {
 						return;
 					}
 
@@ -351,11 +352,15 @@
 					// the card back exactly as JetWooBuilder rendered it.
 					$controls.data( 'wjqaOverlay', $controls.parent() );
 					$inner.append( $controls.addClass( 'wjqa-inline-cart' ) );
+				} );
 
-					return;
-				}
+				return;
+			}
 
-				$home = $controls.data( 'wjqaOverlay' );
+			// Above the breakpoint, put back only what this feature moved.
+			$( '.jet-woo-product-button.wjqa-inline-cart' ).each( function () {
+				var $controls = $( this ),
+					$home = $controls.data( 'wjqaOverlay' );
 
 				if ( ! $home || ! $home.length ) {
 					return;
