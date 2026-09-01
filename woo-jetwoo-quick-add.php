@@ -2,8 +2,9 @@
 /**
  * Plugin Name:       Woo JetWooBuilder Quick Add
  * Plugin URI:        https://github.com/barbatjuan/woo-jetwoo-quick-add
+ * Update URI:        https://github.com/barbatjuan/woo-jetwoo-quick-add
  * Description:       Lets customers add products to the cart straight from a JetWooBuilder product grid — variable products included — instead of being sent to the single product page.
- * Version:           3.2.0
+ * Version:           3.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            barbatjuan
@@ -29,7 +30,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WJQA_VERSION', '3.2.0' );
+define( 'WJQA_VERSION', '3.3.0' );
 define( 'WJQA_FILE', __FILE__ );
 define( 'WJQA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WJQA_URL', plugin_dir_url( __FILE__ ) );
@@ -47,6 +48,7 @@ define( 'WJQA_TESTED_WOOCOMMERCE', '11.0.1' );
 define( 'WJQA_TESTED_VARIATION_SWATCHES_PRO', '2.3.0' );
 
 require_once WJQA_PATH . 'includes/class-wjqa-support.php';
+require_once WJQA_PATH . 'includes/class-wjqa-updates.php';
 require_once WJQA_PATH . 'includes/class-wjqa-assets.php';
 require_once WJQA_PATH . 'includes/class-wjqa-card-navigation.php';
 require_once WJQA_PATH . 'includes/class-wjqa-mobile-cart.php';
@@ -61,6 +63,12 @@ require_once WJQA_PATH . 'includes/class-wjqa-archive-variations.php';
  * stack gets only the parts that apply.
  */
 function wjqa_init() {
+	// Deliberately outside the WooCommerce check below. A site that has switched
+	// WooCommerce off still has this plugin installed, and it should still be told when
+	// a new version exists — an update channel that goes quiet exactly when the site is
+	// mid-surgery is the one that leaves it on an old version for a year.
+	WJQA_Updates::init();
+
 	if ( ! WJQA_Support::has_woocommerce() ) {
 		return;
 	}

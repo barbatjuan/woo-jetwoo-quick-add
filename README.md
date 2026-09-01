@@ -169,6 +169,53 @@ git clone https://github.com/barbatjuan/woo-jetwoo-quick-add.git
 Drop the folder in `wp-content/plugins/` and activate. No settings screen: the plugin
 decides what to run from what is installed.
 
+## Updates
+
+A plugin that does not come from wordpress.org gets no update notice, so it quietly
+rots on every site it is installed on. Point it at a JSON manifest instead and the
+update shows up in Plugins and Dashboard → Updates with a working Update button, the
+same as any plugin from the directory.
+
+**Off until configured.** A copy without a manifest URL makes no outbound requests.
+
+```php
+// wp-config.php
+define( 'WJQA_UPDATE_MANIFEST', 'https://example.com/updates/woo-jetwoo-quick-add.json' );
+```
+
+### Releasing
+
+```bash
+# 1. bump Version in the plugin header, commit
+# 2. build the package and the manifest
+bin/release.sh https://example.com/updates
+# 3. upload both files from dist/ to that URL
+# 4. git tag v3.3.0 && git push origin v3.3.0
+```
+
+The version is read from the plugin header, never passed as an argument: two sources
+for one number is how a manifest ends up advertising a version the zip does not
+contain, and every site then installs an "update" that changes nothing and offers
+itself again the next day. The script also refuses to build from a dirty tree, or to
+reuse a version that already has a tag.
+
+Sites poll every 12 hours. *Check again* on Dashboard → Updates forces it.
+
+### Before you publish a manifest
+
+**WordPress will download whatever that URL serves and install it, unattended, on every
+site running this plugin.** The manifest host is code execution on all of them. Serve it
+from a host you control and treat write access to it the way you would treat SSH access
+to the client sites themselves.
+
+Both the manifest URL and the `download_url` inside it are required to be `https://`.
+A plain-HTTP package can be swapped in transit by anyone on the path, and the site would
+install it without a murmur.
+
+The `Update URI` header matters too, and is already set: without it, anyone registering
+this plugin's slug on wordpress.org would have their code offered to every site as an
+update to this one.
+
 ## Per-site configuration
 
 The plugin ships the code. These are settings, and they belong to each site.
