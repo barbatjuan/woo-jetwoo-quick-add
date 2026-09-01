@@ -198,10 +198,40 @@ one. A site that styles its card button usually scopes that styling to the width
 where the button was visible, which is exactly the range feature C changes, so that
 rule will not follow the button on its own.
 
-**Preferred: widen the site's own rule.** If the site already styles this button
-somewhere, extend that rule to cover the widths where the button now appears, and
-leave the plugin alone. One rule, one source of truth, nothing to keep in sync. A host
-rule carrying `!important` overrides the plugin without a fight.
+**Preferred: extend the site's own rule, scoped to `.wjqa-inline-cart`.** If the site
+already styles this button somewhere, add a copy of that rule scoped to the moved
+control and leave the plugin alone. One palette, one owner, nothing to keep in sync. A
+host rule carrying `!important` overrides the plugin without a fight.
+
+Scope it to the class rather than to a width. A width-based rule keeps applying when
+the plugin is switched off, which changes the site at breakpoints where the button was
+never moved; a class-based one simply stops matching, and the site returns to exactly
+what it was. Put the palette in a custom property so the two rules share it:
+
+```css
+body.woocommerce-shop{ --shop-btn-bg:#4b151d; --shop-btn-fg:#e7b9c3; }
+
+/* wherever the button already lived */
+@media (min-width:1025px){
+  .jet-woo-product-button .add_to_cart_button{ background:var(--shop-btn-bg)!important; … }
+}
+/* and where this plugin moves it */
+.jet-woo-product-button.wjqa-inline-cart .add_to_cart_button{ background:var(--shop-btn-bg)!important; … }
+```
+
+Leave `width` out of the moved rule: that is placement, and the plugin owns it.
+
+### Styling hooks
+
+These class names are part of the plugin's contract with a site's stylesheet and will
+not change without a major version:
+
+| Class | On | Meaning |
+|---|---|---|
+| `.wjqa-inline-cart` | the cart control | feature C has moved it out of the hover overlay |
+| `.wjqa-add-to-cart` | the card's button | this is a variable product's cart button |
+| `.wjqa-variations` / `.wjqa-variation-select` | the dropdown | the native picker |
+| `body.wjqa-picker-swatches` / `body.wjqa-picker-select` | `<body>` | which picker is running |
 
 Only when there is no such rule to widen, set these:
 

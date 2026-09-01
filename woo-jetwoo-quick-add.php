@@ -3,7 +3,7 @@
  * Plugin Name:       Woo JetWooBuilder Quick Add
  * Plugin URI:        https://github.com/barbatjuan/woo-jetwoo-quick-add
  * Description:       Lets customers add products to the cart straight from a JetWooBuilder product grid — variable products included — instead of being sent to the single product page.
- * Version:           3.1.0
+ * Version:           3.1.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            barbatjuan
@@ -29,7 +29,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WJQA_VERSION', '3.1.0' );
+define( 'WJQA_VERSION', '3.1.1' );
 define( 'WJQA_FILE', __FILE__ );
 define( 'WJQA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WJQA_URL', plugin_dir_url( __FILE__ ) );
