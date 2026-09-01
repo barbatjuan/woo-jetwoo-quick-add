@@ -54,11 +54,12 @@
 	   which is why the default is comfortably high rather than just one more. */
 	--wjqa-inline-cart-order: 9;
 
-	/* Appearance of the moved button. See "The moved button" below for why these
-	   exist and why a site will usually want to change them. */
-	--wjqa-button-bg: #4b151d;
-	--wjqa-button-color: #e7b9c3;
-	--wjqa-button-border: 1px solid #4b151d;
+	/* Appearance of the moved button. DELIBERATELY ACHROMATIC — see "The moved
+	   button" below. These are a visible placeholder, not a design, and a site is
+	   expected to replace them or to style the button in its own stylesheet. */
+	--wjqa-button-bg: #222;
+	--wjqa-button-color: #fff;
+	--wjqa-button-border: 1px solid #222;
 	--wjqa-button-radius: 0;
 	--wjqa-button-padding: 13px 20px;
 	--wjqa-button-width: 100%;
@@ -223,14 +224,23 @@ body.wjqa-picker-swatches .jet-woo-product-button .variable-items-wrapper {
    Whatever the button looked like where it used to appear, it now has to look like
    that where it appears instead, and only the site knows what that is.
 
-   Hence the custom properties: THE DEFAULTS ARE A STARTING POINT, NOT A DESIGN.
-   Override them with the site's own button values, ideally pointing at the same
-   variables or hex codes its stylesheet already uses, so the two cannot drift apart:
+   THE DEFAULTS BELOW ARE ACHROMATIC ON PURPOSE. Shipping one shop's brand colours as
+   the default is how a plugin quietly paints somebody else's site the wrong colour,
+   and how the same palette ends up defined in two places that drift apart. Grey is
+   visible, obviously provisional, and belongs to nobody.
+
+   THE BETTER FIX IS NOT TO SET THEM AT ALL. If the site already styles this button
+   somewhere, widen that rule to cover the widths where the button now appears and
+   leave these alone — one rule, one source of truth. Reach for the properties only
+   when there is no such rule to widen:
 
      :root {
-       --wjqa-button-bg: #4b151d;
-       --wjqa-button-color: #e7b9c3;
+       --wjqa-button-bg: <the site's button background>;
+       --wjqa-button-color: <the site's button text>;
      }
+
+   Either way the site wins on its own terms: a host rule carrying `!important`
+   overrides everything here without a fight.
 
    The selector is deliberately one class heavier than the per-widget rule Elementor
    generates for the card button, which is what lets this win without `!important`.

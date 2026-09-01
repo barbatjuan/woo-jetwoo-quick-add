@@ -188,7 +188,7 @@ button once feature C has moved it. Everywhere else there are no colours, no bor
 and no typography, and the dropdown keeps its native browser appearance so it inherits
 whatever the site already looks like.
 
-**Set the moved button's colours. The defaults are a starting point, not a design.**
+**Give the moved button an appearance. The defaults are grey on purpose.**
 
 Card buttons in a hover overlay are routinely given a transparent background, because
 they sit on the product photo and the photo is the background. Moved onto the card's
@@ -198,13 +198,18 @@ one. A site that styles its card button usually scopes that styling to the width
 where the button was visible, which is exactly the range feature C changes, so that
 rule will not follow the button on its own.
 
-Point these at the same values the site's own stylesheet uses, so the two cannot drift:
+**Preferred: widen the site's own rule.** If the site already styles this button
+somewhere, extend that rule to cover the widths where the button now appears, and
+leave the plugin alone. One rule, one source of truth, nothing to keep in sync. A host
+rule carrying `!important` overrides the plugin without a fight.
+
+Only when there is no such rule to widen, set these:
 
 ```css
 :root {
-	--wjqa-button-bg: #4b151d;
-	--wjqa-button-color: #e7b9c3;
-	--wjqa-button-border: 1px solid #4b151d;
+	--wjqa-button-bg: #222;      /* achromatic placeholder — replace it */
+	--wjqa-button-color: #fff;
+	--wjqa-button-border: 1px solid #222;
 	--wjqa-button-radius: 0;
 	--wjqa-button-padding: 13px 20px;
 	--wjqa-button-width: 100%;
@@ -212,6 +217,10 @@ Point these at the same values the site's own stylesheet uses, so the two cannot
 	--wjqa-button-letter-spacing: 0.01em;
 }
 ```
+
+The defaults are grey rather than a real palette on purpose. Shipping one shop's brand
+colours as a plugin default is how a plugin quietly paints somebody else's site the
+wrong colour, and how one palette ends up defined in two places that drift apart.
 
 Layout properties, same place:
 
